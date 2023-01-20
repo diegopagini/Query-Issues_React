@@ -2,7 +2,6 @@
 import { FC } from 'react';
 import { Outlet } from 'react-router';
 
-
 export const GitApp: FC = () => {
 	return (
 		<div className='container mt-3'>
