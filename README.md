@@ -1,8 +1,16 @@
+<!-- @format -->
+
 # React Query - Issues
 
----
+### Axios create
 
-1. Clonar repositorio
-2. Ejecutar ```yarn install``` o ```npm install```
-3. Ejecutar ```yarn dev``` o ```npm run dev```
-4. Abrir el URL del proyecto
+```typescript
+import axios from 'axios';
+
+export const githubApi = axios.create({
+	baseURL: `https://api.github.com/repos/facebook/react`,
+	headers: {},
+});
+```
+
+---
