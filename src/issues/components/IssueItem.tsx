@@ -1,8 +1,14 @@
 /** @format */
+import { FC } from 'react';
 import { FiInfo, FiMessageSquare } from 'react-icons/fi';
 
+import { Issue } from '../interfaces';
 
-export const IssueItem = () => {
+interface Props {
+	issue: Issue;
+}
+
+export const IssueItem: FC<Props> = ({ issue }) => {
 	return (
 		<div className='card mb-2 issue'>
 			<div className='card-body d-flex align-items-center'>
