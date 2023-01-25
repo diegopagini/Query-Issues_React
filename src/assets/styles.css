@@ -23,9 +23,8 @@ h3 {
 }
 
 .avatar {
-	width: 35px;
-	border: 2px solid #222529;
 	border-radius: 100%;
+	width: 35px;
 }
 
 .label-picker {

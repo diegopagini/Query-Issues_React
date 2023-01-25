@@ -13,9 +13,6 @@ export const IssueList: FC<Props> = ({ issues }) => {
 		<div className='card border-white'>
 			<div className='card-header bg-dark'>
 				<ul className='nav nav-pills card-header-pills'>
-					{issues.map((issue: Issue) => (
-						<IssueItem key={issue.id} issue={issue} />
-					))}
 					<li className='nav-item'>
 						<a className='nav-link active'>All</a>
 					</li>
@@ -27,11 +24,11 @@ export const IssueList: FC<Props> = ({ issues }) => {
 					</li>
 				</ul>
 			</div>
-			{/* <div className='card-body text-dark'>
-				{[1, 2, 3].map((issue) => (
-					<IssueItem key={issue} />
+			<div className='card-body text-dark'>
+				{issues.map((issue) => (
+					<IssueItem key={issue.id} issue={issue} />
 				))}
-			</div> */}
+			</div>
 		</div>
 	);
 };
