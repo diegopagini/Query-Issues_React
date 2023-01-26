@@ -9,7 +9,6 @@ interface Props {
 	// Like @Inputs in Angular
 	issues: Issue[];
 	state?: State;
-	// Like @Outputs in Angular
 	onStateChanged: (state?: State) => void;
 }
 
