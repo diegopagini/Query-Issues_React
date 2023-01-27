@@ -6,7 +6,7 @@ import { sleep } from '../../helpers/sleep';
 import { Issue } from '../interfaces';
 
 export const getIssueInfo = async (issueNumber: number): Promise<Issue> => {
-	await sleep(1); // to delay the request.
+	await sleep(2); // to delay the request.
 	const { data } = await githubApi.get<Issue>(`/issues/${issueNumber}`);
 	return data;
 };

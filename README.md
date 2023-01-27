@@ -127,6 +127,8 @@ export const useIssue = (issueNumber: number) => {
 
 ## Prefetch & Preset
 
+### IssueItem
+
 ```tsx
 import { useQueryClient } from '@tanstack/react-query';
 import { FC } from 'react';
@@ -184,6 +186,252 @@ export const IssueItem: FC<Props> = ({ issue }) => {
 					<span className='px-2'>{issue.comments}</span>
 					<FiMessageSquare />
 				</div>
+			</div>
+		</div>
+	);
+};
+```
+
+---
+
+## Pagination
+
+### useIssues
+
+```tsx
+import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+
+import { githubApi } from '../../api/githubApi';
+import { sleep } from '../../helpers/sleep';
+import { Issue } from '../interfaces';
+import { State } from '../interfaces/issue.interface';
+
+interface Props {
+	state?: State;
+	labels: string[];
+	page?: number;
+}
+
+const getIssues = async ({ labels, state, page = 1 }: Props): Promise<Issue[]> => {
+	await sleep(2);
+	const params = new URLSearchParams();
+
+	if (state) params.append('state', state);
+
+	if (labels.length > 0) {
+		const labelString = labels.join(',');
+		params.append('labels', labelString);
+	}
+
+	// Pagination
+	params.append('page', page?.toString());
+	params.append('per_page', '5');
+
+	const { data } = await githubApi<Issue[]>('/issues', { params });
+	return data;
+};
+
+export const useIssues = ({ state, labels }: Props) => {
+	const [page, setPage] = useState(1);
+
+	// If the state or the labels the page will change to the number 1 again.
+	useEffect(() => {
+		setPage(1);
+	}, [state, labels]);
+
+	const issuesQuery = useQuery(['issues', { state, labels, page }], () =>
+		getIssues({ labels, state, page })
+	);
+
+	const nextPage = (): void => {
+		if (issuesQuery.data?.length === 0) return;
+		setPage(page + 1);
+	};
+
+	const prevPage = (): void => {
+		if (page > 1) setPage(page - 1);
+	};
+
+	return {
+		issuesQuery,
+		// Getter
+		page: issuesQuery.isFetching ? 'Loading' : page,
+		// Methods
+		nextPage,
+		prevPage,
+	};
+};
+```
+
+### ListView
+
+```tsx
+import { useState } from 'react';
+
+import { LoadingIcon } from '../../shared/components/LoadingIcon';
+import { IssueList, LabelPicker } from '../components';
+import { useIssues } from '../hooks';
+import { State } from '../interfaces';
+
+export const ListView = () => {
+	const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+	const [state, setState] = useState<State>();
+	const { issuesQuery, page, nextPage, prevPage } = useIssues({ state, labels: selectedLabels });
+
+	const onLabelChanged = (label: string) => {
+		selectedLabels.includes(label)
+			? setSelectedLabels(selectedLabels.filter((lbs: string) => lbs !== label))
+			: setSelectedLabels([...selectedLabels, label]);
+	};
+
+	return (
+		<div className='row mt-5'>
+			<div className='col-8'>
+				{issuesQuery.isLoading ? (
+					<LoadingIcon />
+				) : (
+					<IssueList
+						issues={issuesQuery.data || []}
+						state={state}
+						onStateChanged={(newState?: State) => setState(newState)}
+					/>
+				)}
+
+				<div className='d-flex mt-2 justify-content-between align-items-center'>
+					<button
+						className='btn btn-outline-primary'
+						disabled={issuesQuery.isFetching}
+						onClick={prevPage}>
+						Prev
+					</button>
+					<span>{page}</span>
+					<button
+						className='btn btn-outline-primary'
+						disabled={issuesQuery.isFetching}
+						onClick={nextPage}>
+						Next
+					</button>
+				</div>
+			</div>
+
+			<div className='col-4'>
+				<LabelPicker selectedLabels={selectedLabels} onChange={(label) => onLabelChanged(label)} />
+			</div>
+		</div>
+	);
+};
+```
+
+---
+
+## Infinite Scroll
+
+### useIssuesInfinite
+
+```tsx
+import { useInfiniteQuery } from '@tanstack/react-query';
+
+import { githubApi } from '../../api/githubApi';
+import { Issue, State } from '../interfaces';
+
+interface Props {
+	state?: State;
+	labels: string[];
+	page?: number;
+}
+
+interface QueryProps {
+	pageParam?: number;
+	queryKey: (string | Props)[];
+}
+
+const getIssues = async ({ pageParam = 1, queryKey }: QueryProps): Promise<Issue[]> => {
+	const [, , args] = queryKey;
+	const { state, labels } = args as Props;
+	const params = new URLSearchParams();
+
+	if (state) params.append('state', state);
+
+	if (labels.length > 0) {
+		const labelString = labels.join(',');
+		params.append('labels', labelString);
+	}
+
+	// Pagination
+	params.append('page', pageParam?.toString());
+	params.append('per_page', '5');
+
+	const { data } = await githubApi<Issue[]>('/issues', { params });
+	return data;
+};
+
+export const useIssuesInfinite = ({ state, labels }: Props) => {
+	const issuesQuery = useInfiniteQuery(
+		['issues', 'infinite', { state, labels }],
+		// data.queryKey = ['issues', 'infinite', { state, labels, page: 1 }]
+		(data) => getIssues(data),
+		{
+			getNextPageParam: (lastPage: Issue[], pages: Issue[][]) => {
+				if (lastPage.length === 0) return;
+
+				return pages.length + 1;
+			},
+		}
+	);
+
+	return {
+		issuesQuery,
+	};
+};
+```
+
+### ListViewInfinite
+
+```tsx
+import { useState } from 'react';
+
+import { LoadingIcon } from '../../shared/components/LoadingIcon';
+import { IssueList, LabelPicker } from '../components';
+import { useIssuesInfinite } from '../hooks';
+import { State } from '../interfaces';
+
+export const ListViewInfinite = (): JSX.Element => {
+	const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
+	const [state, setState] = useState<State>();
+	const { issuesQuery } = useIssuesInfinite({ state, labels: selectedLabels });
+
+	const onLabelChanged = (label: string) => {
+		selectedLabels.includes(label)
+			? setSelectedLabels(selectedLabels.filter((lbs: string) => lbs !== label))
+			: setSelectedLabels([...selectedLabels, label]);
+	};
+
+	return (
+		<div className='row mt-5'>
+			<div className='col-8'>
+				{issuesQuery.isLoading ? (
+					<LoadingIcon />
+				) : (
+					<IssueList
+						issues={issuesQuery.data?.pages.flat() || []}
+						state={state}
+						onStateChanged={(newState?: State) => setState(newState)}
+					/>
+				)}
+
+				{issuesQuery.data?.pages.flat()?.length && (
+					<button
+						className='btn btn-outline-primary mt-2'
+						disabled={!issuesQuery.hasNextPage}
+						onClick={() => issuesQuery.fetchNextPage()}>
+						Load more
+					</button>
+				)}
+			</div>
+
+			<div className='col-4'>
+				<LabelPicker selectedLabels={selectedLabels} onChange={(label) => onLabelChanged(label)} />
 			</div>
 		</div>
 	);
